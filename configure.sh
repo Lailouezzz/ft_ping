@@ -1,6 +1,7 @@
 #!/bin/sh
 cd "$(dirname $0)"
 
+maintainer=ale-boud
 
 # ---
 # Defaults variables
@@ -30,9 +31,8 @@ Build options:
   --optimize-disable       disable optimization
   --objdir=OBJDIR          directory for all object (default: ./build)
   --outdir=OUTDIR          directory for all output executable (default : ./bin)
-Other tweaks:
-  CFLAGS=CFLAGS            some more compilation flags
-  LDFLAGS=LDFLAGS          some more linker flags
+  --cflags=CFLAGS            some more compilation flags
+  --ldflags=LDFLAGS          some more linker flags
 Report bugs to ${maintainer}.
 EOF
 exit 0
