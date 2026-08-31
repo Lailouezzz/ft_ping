@@ -3,7 +3,7 @@ Makefile.cfg
 
 # Binary
 build/
-theproject
+ft_ping
 
 # clangd
 .cache/

@@ -16,7 +16,7 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # Default target
-all: all-theproject
+all: all-ft_ping
 bonus: all
 
 # Include vars and msg module
@@ -107,7 +107,7 @@ Makefile.cfg:
 # Build targets
 # ---
 
-all-theproject: $(LIBS_MAKE_RULE) $(BIN_PATH)
+all-ft_ping: $(LIBS_MAKE_RULE) $(BIN_PATH)
 
 # Make the binary
 
@@ -131,7 +131,7 @@ $(OBJDIR)/%.res.o: $(RESDIR)/%
 
 -include $(DEPS)
 
-.PHONY: all-theproject norminette
+.PHONY: all-ft_ping norminette
 
 norminette:
 	@norminette $(SRCDIR) $(INCDIR) | grep -Ev '^Notice|OK!$$'	\
