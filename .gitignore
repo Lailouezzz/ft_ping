@@ -1,0 +1,10 @@
+# Buil/d system
+Makefile.cfg
+
+# Binary
+build/
+theproject
+
+# clangd
+.cache/
+compile_commands.json
