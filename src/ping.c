@@ -6,7 +6,7 @@
 /*   By: ale-boud <ale-boud@student.42lehavre.fr>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 10:43:57 by ale-boud          #+#    #+#             */
-/*   Updated: 2026/09/17 11:30:47 by ale-boud         ###   ########.fr       */
+/*   Updated: 2026/09/17 11:36:29 by ale-boud         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -192,21 +192,27 @@ static void	recv_reply(int sock, struct timeval t0, const char *ip_str,
 	uint8_t			*icmp_data;
 	size_t			icmp_len;
 	t_icmp_hdr		*reply;
-	struct timeval	t1;
+	struct timeval	now;
 	double			rtt;
 	ssize_t			n;
 
-	n = recvfrom(sock, rbuf, sizeof(rbuf), 0, NULL, NULL);
-	if (n <= 0)
-		return ;
-	icmp_data = icmp_strip_ip_header(rbuf, (size_t)n, &icmp_len);
-	if (!icmp_data || icmp_len < sizeof(t_icmp_hdr))
-		return ;
-	reply = (t_icmp_hdr *)icmp_data;
-	if (reply->type != ICMP_ECHO_REPLY || ntohs(reply->id) != id)
-		return ;
-	gettimeofday(&t1, NULL);
-	rtt = timeval_diff_ms(t0, t1);
+	while (true)
+	{
+		n = recvfrom(sock, rbuf, sizeof(rbuf), 0, NULL, NULL);
+		if (n <= 0)
+			return ;
+		icmp_data = icmp_strip_ip_header(rbuf, (size_t)n, &icmp_len);
+		if (!icmp_data || icmp_len < sizeof(t_icmp_hdr))
+			continue ;
+		reply = (t_icmp_hdr *)icmp_data;
+		if (reply->type != ICMP_ECHO_REPLY)
+			continue ;
+		if (ntohs(reply->id) != id || ntohs(reply->seq) != seq)
+			continue ;
+		gettimeofday(&now, NULL);
+		break ;
+	}
+	rtt = timeval_diff_ms(t0, now);
 	stats->recv++;
 	if (stats->rtt_min < 0 || rtt < stats->rtt_min)
 		stats->rtt_min = rtt;
