@@ -32,6 +32,9 @@ typedef struct s_ping_ctx
 	size_t		count;	/**< -c/--count, 0 = unlimited */
 	uint8_t		pattern[ICMP_MAX_PATTERN_LEN];	/**< -p/--pattern bytes */
 	size_t		pattern_len;	/**< 0 = no pattern, default sequential fill */
+	size_t		data_len;	/**< -s/--size, payload length in bytes */
+	int			ttl;	/**< --ttl, -1 = unset (kernel default) */
+	bool		quiet;	/**< -q/--quiet, suppress per-packet output */
 }	t_ping_ctx;
 
 extern t_ping_ctx	g_ctx;

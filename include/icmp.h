@@ -23,6 +23,7 @@
 # define ICMP_ECHO_REPLY	0
 # define ICMP_MAX_PATTERN_LEN	16
 # define ICMP_DEFAULT_DATALEN	56
+# define ICMP_MAX_DATALEN	65507	/* 65535 - 20 (IP hdr) - 8 (ICMP hdr) */
 # define ICMP_PACKET_LEN(datalen)	(sizeof(t_icmp_hdr) + (datalen))
 
 typedef struct PACKED s_icmp_hdr

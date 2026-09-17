@@ -33,11 +33,11 @@
 // ---
 
 noreturn void	ft_ping() {
-	uint8_t		packet[ICMP_PACKET_LEN(ICMP_DEFAULT_DATALEN)];
+	uint8_t		packet[ICMP_PACKET_LEN(g_ctx.data_len)];
 	uint16_t	id;
 
 	id = getpid() & 0xffff;
-	icmp_fill_payload(packet + sizeof(t_icmp_hdr), ICMP_DEFAULT_DATALEN,
+	icmp_fill_payload(packet + sizeof(t_icmp_hdr), g_ctx.data_len,
 		g_ctx.pattern_len ? g_ctx.pattern : NULL, g_ctx.pattern_len);
 	icmp_build_echo(packet, sizeof(packet), id, 0);
 

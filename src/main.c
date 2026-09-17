@@ -6,7 +6,7 @@
 /*   By: ale-boud <ale-boud@student.42lehavre.fr>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 10:01:09 by ale-boud          #+#    #+#             */
-/*   Updated: 2026/09/17 10:43:23 by ale-boud         ###   ########.fr       */
+/*   Updated: 2026/09/17 11:08:45 by ale-boud         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,12 @@
 #include "utils.h"
 
 // ---
+// Local defines
+// ---
+
+enum { OPT_TTL = 256 };
+
+// ---
 // Global variables
 // ---
 
@@ -39,6 +45,9 @@ t_ping_ctx	g_ctx = {
 	.host = NULL,
 	.count = 0,
 	.pattern_len = 0,
+	.data_len = ICMP_DEFAULT_DATALEN,
+	.ttl = -1,
+	.quiet = false,
 };
 
 // ---
@@ -53,6 +62,9 @@ static struct option	long_opts[] = {
 	{"verbose", no_argument, NULL, 'v'},
 	{"count", required_argument, NULL, 'c'},
 	{"pattern", required_argument, NULL, 'p'},
+	{"size", required_argument, NULL, 's'},
+	{"ttl", required_argument, NULL, OPT_TTL},
+	{"quiet", no_argument, NULL, 'q'},
 	{NULL, 0, NULL, 0},
 };
 
@@ -100,6 +112,11 @@ noreturn static void	print_help()
 	print_usage();
 	printf("Send ICMP ECHO_REQUEST packets to network hosts.\n");
 	printf("\n");
+	printf("  -c, --count=NUMBER         stop after sending NUMBER packets\n");
+	printf("  -p, --pattern=PATTERN      fill ICMP packet with given pattern (hex)\n");
+	printf("  -s, --size=NUMBER          send NUMBER data octets\n");
+	printf("      --ttl=N                specify N as time-to-live\n");
+	printf("  -q, --quiet                quiet output\n");
 	printf("  -v, --verbose              verbose output\n");
 	printf("  -?, --help                 give this help list\n");
 	exit(EXIT_SUCCESS);
@@ -135,13 +152,16 @@ static void	parse_args(int argc, char **argv)
 	const char	*tok;
 
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "hvc:p:?", long_opts, NULL)) != -1)
+	while ((c = getopt_long(argc, argv, "hvqc:p:s:?", long_opts, NULL)) != -1)
 	{
 		switch (c) {
 			case 'h':
 				print_help();
 			case 'v':
 				set_verbose(true);
+				break ;
+			case 'q':
+				g_ctx.quiet = true;
 				break ;
 			case 'c':
 				g_ctx.count = ping_cvt_number(optarg, 0, true);
@@ -152,6 +172,12 @@ static void	parse_args(int argc, char **argv)
 					error_msg("error in pattern near %s", optarg);
 					exit(EXIT_FAILURE);
 				}
+				break ;
+			case 's':
+				g_ctx.data_len = ping_cvt_number(optarg, ICMP_MAX_DATALEN, true);
+				break ;
+			case OPT_TTL:
+				g_ctx.ttl = ping_cvt_number(optarg, 255, false);
 				break ;
 			case '?':
 				tok = argv[optind - 1];
