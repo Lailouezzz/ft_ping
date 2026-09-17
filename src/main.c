@@ -6,7 +6,7 @@
 /*   By: ale-boud <ale-boud@student.42lehavre.fr>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 10:01:09 by ale-boud          #+#    #+#             */
-/*   Updated: 2026/09/17 10:23:39 by ale-boud         ###   ########.fr       */
+/*   Updated: 2026/09/17 10:43:23 by ale-boud         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,8 @@
  */
 t_ping_ctx	g_ctx = {
 	.host = NULL,
+	.count = 0,
+	.pattern_len = 0,
 };
 
 // ---
@@ -49,27 +51,27 @@ t_ping_ctx	g_ctx = {
 static struct option	long_opts[] = {
 	{"help", no_argument, NULL, 'h'},
 	{"verbose", no_argument, NULL, 'v'},
+	{"count", required_argument, NULL, 'c'},
+	{"pattern", required_argument, NULL, 'p'},
 	{NULL, 0, NULL, 0},
 };
 
 // ---
-// Static function definitions
+// Static function declarations
 // ---
 
-void	print_usage(void)
-{
-	printf("Usage: ft_ping [OPTION...] HOST ...\n");
-}
+static void			print_usage();
 
-noreturn void	print_help(void)
-{
-	print_usage();
-	printf("Send ICMP ECHO_REQUEST packets to network hosts.\n");
-	printf("\n");
-	printf("  -v, --verbose              verbose output\n");
-	printf("  -?, --help                 give this help list\n");
-	exit(EXIT_SUCCESS);
-}
+noreturn static void	print_help();
+
+static size_t		ping_cvt_number(
+						const char *arg,
+						size_t maxval,
+						bool allow_zero);
+
+static void			parse_args(
+						int argc,
+						char **argv);
 
 // ---
 // Extern function definitions
@@ -84,19 +86,72 @@ int	main(
 	return (EXIT_SUCCESS);
 }
 
-void	parse_args(int argc, char **argv)
+// ---
+// Static function definitions
+// ---
+
+static void	print_usage()
+{
+	printf("Usage: ft_ping [OPTION...] HOST ...\n");
+}
+
+noreturn static void	print_help()
+{
+	print_usage();
+	printf("Send ICMP ECHO_REQUEST packets to network hosts.\n");
+	printf("\n");
+	printf("  -v, --verbose              verbose output\n");
+	printf("  -?, --help                 give this help list\n");
+	exit(EXIT_SUCCESS);
+}
+
+static size_t	ping_cvt_number(const char *arg, size_t maxval, bool allow_zero)
+{
+	char			*end;
+	unsigned long	n;
+
+	n = strtoul(arg, &end, 0);
+	if (*end)
+	{
+		error_msg("invalid value (`%s' near `%s')", arg, end);
+		exit(EXIT_FAILURE);
+	}
+	if (n == 0 && !allow_zero)
+	{
+		error_msg("option value too small: %s", arg);
+		exit(EXIT_FAILURE);
+	}
+	if (maxval && n > maxval)
+	{
+		error_msg("option value too big: %s", arg);
+		exit(EXIT_FAILURE);
+	}
+	return (n);
+}
+
+static void	parse_args(int argc, char **argv)
 {
 	int			c;
 	const char	*tok;
 
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "hv?", long_opts, NULL)) != -1)
+	while ((c = getopt_long(argc, argv, "hvc:p:?", long_opts, NULL)) != -1)
 	{
 		switch (c) {
 			case 'h':
 				print_help();
 			case 'v':
 				set_verbose(true);
+				break ;
+			case 'c':
+				g_ctx.count = ping_cvt_number(optarg, 0, true);
+				break ;
+			case 'p':
+				if (!icmp_decode_pattern(optarg, g_ctx.pattern, &g_ctx.pattern_len))
+				{
+					error_msg("error in pattern near %s", optarg);
+					exit(EXIT_FAILURE);
+				}
 				break ;
 			case '?':
 				tok = argv[optind - 1];

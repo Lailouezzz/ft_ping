@@ -6,7 +6,7 @@
 /*   By: ale-boud <ale-boud@student.42lehavre.fr>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 10:01:12 by ale-boud          #+#    #+#             */
-/*   Updated: 2026/09/17 10:02:17 by ale-boud         ###   ########.fr       */
+/*   Updated: 2026/09/17 10:46:39 by ale-boud         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,35 +20,22 @@
 
 # include <stdbool.h>
 # include <stddef.h>
+# include <stdint.h>
+# include <stdnoreturn.h>
 
-/**
- * @brief Global runtime context populated by argv.
- */
+# include "icmp.h"
+
+/** Global runtime context populated by argv. */
 typedef struct s_ping_ctx
 {
 	const char	*host;	/**< Target host/IP, positional argument. */
+	size_t		count;	/**< -c/--count, 0 = unlimited */
+	uint8_t		pattern[ICMP_MAX_PATTERN_LEN];	/**< -p/--pattern bytes */
+	size_t		pattern_len;	/**< 0 = no pattern, default sequential fill */
 }	t_ping_ctx;
 
-/**
- * @brief Global context
- */
 extern t_ping_ctx	g_ctx;
 
-/**
- * @brief Parse command-line arguments with getopt_long and fill g_ctx.
- * @param argc argc from main.
- * @param argv argv from main.
- */
-void	parse_args(int argc, char **argv);
-
-/**
- * @brief Print the ft_ping short usage line on stdout.
- */
-void	print_usage(void);
-
-/**
- * @brief Print the full ft_ping help text on stdout, then exit successfully.
- */
-void	print_help(void);
+noreturn void	ft_ping();
 
 #endif
