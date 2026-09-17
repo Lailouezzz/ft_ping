@@ -259,6 +259,9 @@ void	verbose(const char *fmt, ...);
  */
 void	set_verbose(bool verbose);
 
+/** @return Current verbose flag. */
+bool	is_verbose(void);
+
 /**
  * @brief Set the global program name
  *

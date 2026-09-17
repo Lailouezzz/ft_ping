@@ -75,6 +75,10 @@ void	set_verbose(bool verbose) {
 	_verbose = verbose;
 }
 
+bool	is_verbose(void) {
+	return (_verbose);
+}
+
 void	set_pn(const char *pn) {
 	_pn = pn;
 }

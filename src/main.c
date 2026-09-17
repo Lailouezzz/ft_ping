@@ -94,8 +94,7 @@ int	main(
 		char **argv) {
 	set_pn(*argv);
 	parse_args(argc, argv);
-
-	return (EXIT_SUCCESS);
+	ft_ping();
 }
 
 // ---
