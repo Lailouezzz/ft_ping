@@ -6,7 +6,7 @@
 /*   By: ale-boud <ale-boud@student.42lehavre.fr>   +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/09/17 10:43:57 by ale-boud          #+#    #+#             */
-/*   Updated: 2026/09/17 11:36:29 by ale-boud         ###   ########.fr       */
+/*   Updated: 2026/09/17 11:52:00 by ale-boud         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,9 +67,10 @@ static bool	resolve_host(
 				size_t ip_str_len);
 static int	open_socket(void);
 static void	send_request(int sock, struct sockaddr_in *dest,
-				uint8_t *packet, size_t packet_len, uint16_t id, size_t seq);
-static void	recv_reply(int sock, struct timeval t0, const char *ip_str,
+				uint8_t *packet, size_t packet_len);
+static void	recv_reply(int sock, struct timeval t0,
 				uint16_t id, size_t seq, t_stats *stats);
+static bool	is_error_for_us(const uint8_t *icmp_data, size_t icmp_len, uint16_t id);
 static void	print_statistics(const char *host, const t_stats *stats);
 static void	pace(struct timeval t0);
 
@@ -87,6 +88,7 @@ noreturn void	ft_ping() {
 	t_stats				stats;
 	struct timeval		t0;
 
+	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (!resolve_host(g_ctx.host, &dest, ip_str, sizeof(ip_str)))
 		exit(EXIT_FAILURE);
 	sock = open_socket();
@@ -107,9 +109,9 @@ noreturn void	ft_ping() {
 			g_ctx.pattern_len ? g_ctx.pattern : NULL, g_ctx.pattern_len);
 		icmp_build_echo(packet, sizeof(packet), id, seq);
 		gettimeofday(&t0, NULL);
-		send_request(sock, &dest, packet, sizeof(packet), id, seq);
+		send_request(sock, &dest, packet, sizeof(packet));
 		stats.sent++;
-		recv_reply(sock, t0, ip_str, id, seq, &stats);
+		recv_reply(sock, t0, id, seq, &stats);
 		seq++;
 		if (!g_stop && (g_ctx.count == 0 || seq < g_ctx.count))
 			pace(t0);
@@ -178,35 +180,46 @@ static int	open_socket(void)
 }
 
 static void	send_request(int sock, struct sockaddr_in *dest,
-				uint8_t *packet, size_t packet_len, uint16_t id, size_t seq) {
-	UNUSED(id);
-	UNUSED(seq);
+				uint8_t *packet, size_t packet_len) {
 	if (sendto(sock, packet, packet_len, 0,
 			(struct sockaddr *)dest, sizeof(*dest)) < 0)
 		perror_msg("sendto");
 }
 
-static void	recv_reply(int sock, struct timeval t0, const char *ip_str,
+static void	recv_reply(int sock, struct timeval t0,
 				uint16_t id, size_t seq, t_stats *stats) {
 	uint8_t			rbuf[IP_MAXPACKET];
 	uint8_t			*icmp_data;
 	size_t			icmp_len;
 	t_icmp_hdr		*reply;
+	struct sockaddr_in	from;
+	socklen_t		from_len;
+	char			from_str[INET_ADDRSTRLEN];
 	struct timeval	now;
 	double			rtt;
 	ssize_t			n;
 
 	while (true)
 	{
-		n = recvfrom(sock, rbuf, sizeof(rbuf), 0, NULL, NULL);
+		from_len = sizeof(from);
+		n = recvfrom(sock, rbuf, sizeof(rbuf), 0,
+				(struct sockaddr *)&from, &from_len);
 		if (n <= 0)
 			return ;
 		icmp_data = icmp_strip_ip_header(rbuf, (size_t)n, &icmp_len);
 		if (!icmp_data || icmp_len < sizeof(t_icmp_hdr))
 			continue ;
 		reply = (t_icmp_hdr *)icmp_data;
+		if (reply->type == ICMP_ECHO_REQUEST)
+			continue ;	/* our own request looping back (e.g. on lo) */
+		inet_ntop(AF_INET, &from.sin_addr, from_str, sizeof(from_str));
 		if (reply->type != ICMP_ECHO_REPLY)
+		{
+			if (is_verbose() && is_error_for_us(icmp_data, icmp_len, id))
+				printf("%zu bytes from %s: icmp_type=%u icmp_code=%u\n",
+					icmp_len, from_str, reply->type, reply->code);
 			continue ;
+		}
 		if (ntohs(reply->id) != id || ntohs(reply->seq) != seq)
 			continue ;
 		gettimeofday(&now, NULL);
@@ -222,7 +235,27 @@ static void	recv_reply(int sock, struct timeval t0, const char *ip_str,
 	stats->rtt_sum_sq += rtt * rtt;
 	if (!g_ctx.quiet)
 		printf("%zu bytes from %s: icmp_seq=%zu ttl=%d time=%.3f ms\n",
-			icmp_len, ip_str, seq, ((struct ip *)rbuf)->ip_ttl, rtt);
+			icmp_len, from_str, seq, ((struct ip *)rbuf)->ip_ttl, rtt);
+}
+
+/* An ICMP error embeds the original IP+ICMP header that caused it. */
+static bool	is_error_for_us(const uint8_t *icmp_data, size_t icmp_len, uint16_t id)
+{
+	const uint8_t	*orig;
+	size_t			orig_len;
+	uint8_t			*orig_icmp_data;
+	size_t			orig_icmp_len;
+	t_icmp_hdr		*orig_icmp;
+
+	if (icmp_len <= sizeof(t_icmp_hdr))
+		return (false);
+	orig = icmp_data + sizeof(t_icmp_hdr);
+	orig_len = icmp_len - sizeof(t_icmp_hdr);
+	orig_icmp_data = icmp_strip_ip_header((uint8_t *)orig, orig_len, &orig_icmp_len);
+	if (!orig_icmp_data || orig_icmp_len < sizeof(t_icmp_hdr))
+		return (false);
+	orig_icmp = (t_icmp_hdr *)orig_icmp_data;
+	return (orig_icmp->type == ICMP_ECHO_REQUEST && ntohs(orig_icmp->id) == id);
 }
 
 static void	pace(struct timeval t0)
